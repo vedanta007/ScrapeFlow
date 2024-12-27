@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workflow {
+  id  String  @id  @default(cuid())
+  userId  String
+  name  String
+  description String?
+
+  definition  String
+  status  String
+
+  lastExecutionAt DateTime?
+  lastExecutionId String?
+  lastExecutionStatus String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  //User cannot have two workflows with the same name
+  @@unique([name, userId])
+  executions  WorkflowExecution[]
+}
+
+model WorkflowExecution {
+  id  String  @id  @default(cuid())
+  workflowId  String
+  userId  String
+  trigger  String
+
+  status  String
+  result  String?
+
+  createdAt DateTime  @default(now())
+  startedAt DateTime?
+  completedAt DateTime?
+
+  creditsCost Int @default(0)
+
+  phases    ExecutionPhase[]
+  workflow  Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+}
+
+model ExecutionPhase {
+  id  String  @id  @default(cuid())
+  userId  String
+  executionId  String
+  status  String
+  number  Int
+  name  String
+  node  String
+
+  input  String?
+  output  String?
+  creditsCost  Int?
+
+  startedAt DateTime?
+  completedAt DateTime?
+
+  execution  WorkflowExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
+}
