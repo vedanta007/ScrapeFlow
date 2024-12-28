@@ -67,5 +67,17 @@ model ExecutionPhase {
   startedAt DateTime?
   completedAt DateTime?
 
+  logs ExecutionLog[]
+
   execution  WorkflowExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
+}
+
+model ExecutionLog {
+  id  String  @id  @default(cuid())
+  logLevel  String
+  message String
+  timestamp DateTime  @default(now())
+
+  executionPhaseId  String
+  executionPhase  ExecutionPhase  @relation(fields: [executionPhaseId], references: [id], onDelete: Cascade)
 }
