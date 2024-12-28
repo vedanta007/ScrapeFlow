@@ -36,6 +36,7 @@ model WorkflowExecution {
   workflowId  String
   userId  String
   trigger  String
+  definition  String
 
   status  String
   result  String?
