@@ -6,8 +6,8 @@ export async function PageToHtmlExecutor(environment: ExecutionEnvironment<typeo
         const html = await environment.getPage()!.content()
         environment.setOutput('html', html)
         return true
-    } catch (error) {
-        console.error(error)
+    } catch (error: any) {
+        environment.log.error(error.message)
         return false
     }
 }

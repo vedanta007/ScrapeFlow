@@ -1,4 +1,3 @@
-import { waitFor } from '@/lib/helper/waitFor'
 import { ExecutionEnvironment } from '@/types/executor'
 import puppeteer from 'puppeteer'
 import { LaunchBrowserTask } from '../task/launchBrowser'
@@ -14,8 +13,8 @@ export async function LaunchBrowserExecutor(environment: ExecutionEnvironment<ty
         await page.goto(websiteUrl)
         environment.setPage(page)
         return true
-    } catch (error) {
-        console.error(error)
+    } catch (error: any) {
+        environment.log.error(error.message)
         return false
     }
 }

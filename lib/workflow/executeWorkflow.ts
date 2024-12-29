@@ -10,6 +10,8 @@ import { TaskParamType } from '@/types/task'
 import { Browser } from 'puppeteer'
 import { revalidatePath } from 'next/cache'
 import { Edge } from '@xyflow/react'
+import { LogCollector } from '@/types/log'
+import { createLogCollector } from '../log'
 
 export async function ExecuteWorkflow(executionId: string): Promise<void> {
     const execution = await prisma.workflowExecution.findUnique({
@@ -111,9 +113,10 @@ async function finalizeWorkflowExecution(executionId: string, workflowId: string
 }
 
 // This function executes a single phase of the workflow
-async function executeWorkflowPhase(phase: ExecutionPhase, environment: Environment, edges: Edge[]) {
+async function executeWorkflowPhase(phase: ExecutionPhase, environment: Environment, edges: Edge[]): Promise<{ success: boolean }> {
     const startedAt = new Date()
     const node = JSON.parse(phase.node) as AppNode
+    const logCollector = createLogCollector()
 
     setupEnvironmentForPhase(node, environment, edges)
 
@@ -131,16 +134,16 @@ async function executeWorkflowPhase(phase: ExecutionPhase, environment: Environm
     const creditsRequired = TaskRegistry[node.data.type].credits
     console.log(`Executing phase ${phase.name} with ${creditsRequired} credits`)
 
-    const success = await executePhase(phase, node, environment)
+    const success = await executePhase(phase, node, environment, logCollector)
 
     const outputs = environment.phases[node.id].outputs
 
-    await finalizePhase(phase.id, success, outputs)
+    await finalizePhase(phase.id, success, outputs, logCollector)
     return { success }
 }
 
 // This function finalizes a phase by setting the completedAt date and status to FAILED or COMPLETED
-async function finalizePhase(phaseId: string, success: boolean, outputs: Record<string, string>) {
+async function finalizePhase(phaseId: string, success: boolean, outputs: Record<string, string>, logCollector: LogCollector) {
     const finalStatus = success ? ExecutionPhaseStatus.COMPLETED : ExecutionPhaseStatus.FAILED
     await prisma.executionPhase.update({
         where: {
@@ -150,18 +153,27 @@ async function finalizePhase(phaseId: string, success: boolean, outputs: Record<
             completedAt: new Date(),
             status: finalStatus,
             output: JSON.stringify(outputs),
+            logs: {
+                createMany: {
+                    data: logCollector.getAll().map((log) => ({
+                        message: log.message,
+                        logLevel: log.level,
+                        timestamp: log.timestamp,
+                    }))
+                },
+            },
         },
     })
 }
 
 // This function executes a single phase of the workflow
-async function executePhase(phase: ExecutionPhase, node: AppNode, environment: Environment): Promise<boolean> {
+async function executePhase(phase: ExecutionPhase, node: AppNode, environment: Environment, logCollector: LogCollector): Promise<boolean> {
     const runFn = ExecutorRegistry[node.data.type]
     if (!runFn) {
         return false
     }
 
-    const executionEnvironment: ExecutionEnvironment<any> = createExecutionEnvironment(node, environment)
+    const executionEnvironment: ExecutionEnvironment<any> = createExecutionEnvironment(node, environment, logCollector)
     return await runFn(executionEnvironment)
 }
 
@@ -194,7 +206,7 @@ function setupEnvironmentForPhase(node: AppNode, environment: Environment, edges
     }
 }
 
-function createExecutionEnvironment(node: AppNode, environment: Environment): ExecutionEnvironment<any> {
+function createExecutionEnvironment(node: AppNode, environment: Environment, logCollector: LogCollector): ExecutionEnvironment<any> {
     return {
         getInput: (name: string) => environment.phases[node.id]?.inputs[name],
         setOutput: (name: string, value: string) => environment.phases[node.id].outputs[name] = value,
@@ -204,6 +216,8 @@ function createExecutionEnvironment(node: AppNode, environment: Environment): Ex
         
         getPage: () => environment.page,
         setPage: (page: any) => environment.page = page,
+
+        log: logCollector,
     }
 }
 
