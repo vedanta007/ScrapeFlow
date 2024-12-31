@@ -37,7 +37,8 @@ export async function ExecuteWorkflow(executionId: string): Promise<void> {
     let creditsConsumed = 0
     let executionFailed = false
     for (const phase of execution.phases) {
-        const phaseExecution = await executeWorkflowPhase(phase, environment, edges)
+        const phaseExecution = await executeWorkflowPhase(phase, environment, edges, execution.userId)
+        creditsConsumed += phaseExecution.creditsConsumed
         if (!phaseExecution.success) {
             executionFailed = true
             break
@@ -113,7 +114,11 @@ async function finalizeWorkflowExecution(executionId: string, workflowId: string
 }
 
 // This function executes a single phase of the workflow
-async function executeWorkflowPhase(phase: ExecutionPhase, environment: Environment, edges: Edge[]): Promise<{ success: boolean }> {
+async function executeWorkflowPhase(
+    phase: ExecutionPhase,
+    environment: Environment,
+    edges: Edge[],
+    userId: string): Promise<{ success: boolean, creditsConsumed: number }> {
     const startedAt = new Date()
     const node = JSON.parse(phase.node) as AppNode
     const logCollector = createLogCollector()
@@ -132,18 +137,27 @@ async function executeWorkflowPhase(phase: ExecutionPhase, environment: Environm
     })
 
     const creditsRequired = TaskRegistry[node.data.type].credits
-    console.log(`Executing phase ${phase.name} with ${creditsRequired} credits`)
-
-    const success = await executePhase(phase, node, environment, logCollector)
+    let success = await decrementCredits(userId, creditsRequired, logCollector)
+    const creditsConsumed = success ? creditsRequired : 0
+    if(success) {
+        //Commence phase execution if there is sufficient credits
+        success = await executePhase(phase, node, environment, logCollector)
+    }
 
     const outputs = environment.phases[node.id].outputs
 
-    await finalizePhase(phase.id, success, outputs, logCollector)
-    return { success }
+    await finalizePhase(phase.id, success, outputs, logCollector, creditsConsumed)
+    return { success, creditsConsumed }
 }
 
 // This function finalizes a phase by setting the completedAt date and status to FAILED or COMPLETED
-async function finalizePhase(phaseId: string, success: boolean, outputs: Record<string, string>, logCollector: LogCollector) {
+async function finalizePhase(
+    phaseId: string,
+    success: boolean,
+    outputs: Record<string, string>,
+    logCollector: LogCollector,
+    creditsConsumed: number
+) {
     const finalStatus = success ? ExecutionPhaseStatus.COMPLETED : ExecutionPhaseStatus.FAILED
     await prisma.executionPhase.update({
         where: {
@@ -153,6 +167,7 @@ async function finalizePhase(phaseId: string, success: boolean, outputs: Record<
             completedAt: new Date(),
             status: finalStatus,
             output: JSON.stringify(outputs),
+            creditsCost: creditsConsumed,
             logs: {
                 createMany: {
                     data: logCollector.getAll().map((log) => ({
@@ -224,5 +239,23 @@ function createExecutionEnvironment(node: AppNode, environment: Environment, log
 async function cleanupEnvironment(environment: Environment) {
     if (environment.browser) {
         await environment.browser.close().catch(error => console.error('Cannot close browser, reason:', error))
+    }
+}
+
+async function decrementCredits(userId: string, amount: number, logCollector: LogCollector) {
+    try {
+        await prisma.userBalance.update({
+            where: {
+                userId,
+                credits: { gte: amount },
+            },
+            data: {
+                credits: { decrement: amount },
+            },
+        })
+        return true
+    } catch (error) {
+        logCollector.error('Insufficient balance')
+        return false
     }
 }
