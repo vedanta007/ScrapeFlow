@@ -12,12 +12,13 @@ import { GetPhasesTotalCost } from "@/lib/helper/creditCost"
 import { DatesToDurationString } from "@/lib/helper/duration"
 import { cn } from "@/lib/utils"
 import { LogLevel } from "@/types/log"
-import { WorkflowExecutionStatus } from "@/types/workflow"
+import { ExecutionPhaseStatus, WorkflowExecutionStatus } from "@/types/workflow"
 import { ExecutionLog } from "@prisma/client"
 import { useQuery } from "@tanstack/react-query"
 import { formatDistanceToNow } from "date-fns"
 import { CalendarIcon, CircleDashedIcon, ClockIcon, CoinsIcon, Loader2Icon, LucideIcon, WorkflowIcon } from "lucide-react"
-import { ReactNode, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
+import PhaseStatusBadge from "./phaseStatusBadge"
 
 type ExecutionData = Awaited<ReturnType<typeof GetWorkflowExecutionWithPhases>>
 
@@ -40,6 +41,23 @@ function ExecutionViewer({ initialData }: { initialData: ExecutionData }) {
     const isRunning = query.data?.status === WorkflowExecutionStatus.RUNNING
     const duration = DatesToDurationString(query.data?.startedAt, query.data?.completedAt)
     const creditsConsumed = GetPhasesTotalCost(query.data?.phases || [])
+
+    useEffect(() => {
+        //while running we auto-select the current running phase in the sidebar
+        const phases = query.data?.phases || []
+
+        if (isRunning) {
+            const phaseToSelect = phases.toSorted((a,b) => 
+                a.startedAt! > b.startedAt! ? -1 : 1
+            )[0]
+            setSelectedPhase(phaseToSelect.id)
+        }
+
+        const phaseToSelect = phases.toSorted((a,b) => 
+            a.completedAt! > b.completedAt! ? -1 : 1
+        )[0]
+        setSelectedPhase(phaseToSelect.id)
+    }, [isRunning, query.data?.phases])
 
     return (
         <div className="flex h-full w-full">
@@ -104,9 +122,7 @@ function ExecutionViewer({ initialData }: { initialData: ExecutionData }) {
                                     {phase.name}
                                 </p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                {phase.status}
-                            </p>
+                            <PhaseStatusBadge status={phase.status as ExecutionPhaseStatus} />
                         </Button>
                     ))}
                 </div>
