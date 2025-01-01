@@ -30,11 +30,13 @@ export async function RunWorkflow(form: { workflowId: string, flowDefinition?: s
     }
     
     let executionPlan: WorkflowExecutionPlan
+    let workflowDefinition = flowDefinition
     if(workflow.status === WorkflowStatus.PUBLISHED) {
         if (!workflow.executionPlan) {
             throw new Error('Workflow execution plan is not available')
         }
-        executionPlan = JSON.parse(workflow.executionPlan!)
+        executionPlan = JSON.parse(workflow.executionPlan)
+        workflowDefinition = workflow.definition
     } else {
         // Draft workflow
         if (!flowDefinition) {
@@ -58,7 +60,7 @@ export async function RunWorkflow(form: { workflowId: string, flowDefinition?: s
             status: WorkflowExecutionStatus.PENDING,
             startedAt: new Date(),
             trigger: WorkflowExecutionTrigger.MANUAL,
-            definition: flowDefinition!,
+            definition: workflowDefinition!,
             phases: {
                 create: executionPlan.flatMap((phase) => {
                     return phase.nodes.flatMap((node) => {
