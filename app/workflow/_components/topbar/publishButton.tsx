@@ -15,7 +15,7 @@ function PublishButton({ workflowId }: { workflowId: string }) {
     const mutation = useMutation({
         mutationFn: PublishWorkflow,
         onSuccess: () => {
-            toast.success('Workflow started', { id: workflowId })
+            toast.success('Workflow published', { id: workflowId })
         },
         onError: () => {
             toast.error('Something went wrong', { id: workflowId })
