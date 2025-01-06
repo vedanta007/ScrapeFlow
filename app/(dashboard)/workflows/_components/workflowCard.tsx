@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { cn } from '@/lib/utils'
 import { WorkflowExecutionStatus, WorkflowStatus } from '@/types/workflow'
 import { Workflow } from '@prisma/client'
-import { ChevronRightIcon, CoinsIcon, CornerDownRight, FileTextIcon, MoreVerticalIcon, MoveRightIcon, PlayIcon, ShuffleIcon, Trash2Icon } from 'lucide-react'
+import { ChevronRightIcon, ClockIcon, CoinsIcon, CornerDownRight, FileTextIcon, MoreVerticalIcon, MoveRightIcon, PlayIcon, ShuffleIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import React, { useState } from 'react'
 import DeleteWorkflowDialog from './deleteWorkflowDialog'
@@ -15,7 +15,8 @@ import RunButton from './runButton'
 import SchedulerDialog from './schedulerDialog'
 import { Badge } from '@/components/ui/badge'
 import ExecutionStatusIndicator from '@/app/workflow/runs/[workflowId]/_components/executionStatusIndicator'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 
 const statusColors = {
     [WorkflowStatus.DRAFT]: 'bg-yellow-400 text-yellow-600',
@@ -129,8 +130,10 @@ function ScheduleSection({
 }
 
 function LastRunDetails({ workflow }: { workflow: Workflow }) {
-    const { lastExecutionAt, lastExecutionStatus, lastExecutionId } = workflow
+    const { lastExecutionAt, lastExecutionStatus, lastExecutionId, nextRunAt } = workflow
     const formattedStartedAt = lastExecutionAt && formatDistanceToNow(lastExecutionAt, { addSuffix: true })
+    const nextSchedule = nextRunAt && format(nextRunAt, 'yyyy-MM-dd HH:mm')
+    const nextScheduleUtc = nextRunAt && formatInTimeZone(nextRunAt, 'UTC', 'HH:mm')
 
     return (
         <div className='bg-primary/5 px-4 py-1 flex justify-between items-center text-muted-foreground'>
@@ -148,6 +151,14 @@ function LastRunDetails({ workflow }: { workflow: Workflow }) {
                     <p>No runs yet</p>
                 }
             </div>
+            {!nextRunAt && (
+                <div className='flex items-center gap-2 text-sm'>
+                    <ClockIcon size={12} />
+                    <span>Next run at:</span>
+                    <span>{nextSchedule}</span>
+                    <span className='text-sm'>({nextScheduleUtc} UTC)</span>
+                </div>
+            )}
         </div>
     )
 }
