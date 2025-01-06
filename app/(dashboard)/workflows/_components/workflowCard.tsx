@@ -130,6 +130,11 @@ function ScheduleSection({
 }
 
 function LastRunDetails({ workflow }: { workflow: Workflow }) {
+    const isDraft = workflow.status === WorkflowStatus.DRAFT
+    if(isDraft) {
+        return null
+    }
+    
     const { lastExecutionAt, lastExecutionStatus, lastExecutionId, nextRunAt } = workflow
     const formattedStartedAt = lastExecutionAt && formatDistanceToNow(lastExecutionAt, { addSuffix: true })
     const nextSchedule = nextRunAt && format(nextRunAt, 'yyyy-MM-dd HH:mm')
