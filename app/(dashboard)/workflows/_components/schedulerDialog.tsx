@@ -11,6 +11,7 @@ import { Calendar1Icon, ClockIcon, TriangleAlertIcon } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import cronstrue from 'cronstrue'
+import parser from 'cron-parser'
 
 function SchedulerDialog(props: { workflowId: string, cron: string | null }) {
     const [cron, setCron] = useState(props.cron || '')
@@ -29,6 +30,7 @@ function SchedulerDialog(props: { workflowId: string, cron: string | null }) {
 
     useEffect(() => {
         try {
+            parser.parseExpression(cron, { utc: true })
             const humanCronStr = cronstrue.toString(cron)
             setValidCron(true)
             setReadableCron(humanCronStr)
@@ -37,19 +39,22 @@ function SchedulerDialog(props: { workflowId: string, cron: string | null }) {
         }
     }, [cron])
 
+    const workflowHasValidCron = props.cron && props.cron.length>0 //For the initial render to avoid flickering
+    const readableSavedCron = workflowHasValidCron && cronstrue.toString(props.cron!)
+
     return (
         <Dialog>
             <DialogTrigger asChild>
                 <Button variant={'link'} size={'sm'} className={cn('text-sm p-0 h-auto text-orange-500',
-                    validCron && 'text-primary'
+                    workflowHasValidCron && 'text-primary'
                 )}>
-                    {validCron &&
+                    {workflowHasValidCron &&
                         <div className='flex items-center gap-2'>
                             <ClockIcon />
-                            {readableCron}
+                            {readableSavedCron}
                         </div>
                     }
-                    {!validCron &&
+                    {!workflowHasValidCron &&
                         <div className='flex items-center gap-1'>
                             <TriangleAlertIcon className='h-3 w-3' /> Set schedule
                         </div>
@@ -78,7 +83,7 @@ function SchedulerDialog(props: { workflowId: string, cron: string | null }) {
                     <DialogClose asChild>
                         <Button
                             className='w-full'
-                            disabled={mutation.isPending}
+                            disabled={mutation.isPending || !validCron}
                             onClick={() => {
                                 toast.loading('Saving...', { id: 'cron' })
                                 mutation.mutate({ id: props.workflowId, cron })
