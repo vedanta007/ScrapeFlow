@@ -186,6 +186,7 @@ async function finalizePhase(
 async function executePhase(phase: ExecutionPhase, node: AppNode, environment: Environment, logCollector: LogCollector): Promise<boolean> {
     const runFn = ExecutorRegistry[node.data.type]
     if (!runFn) {
+        logCollector.error(`Executor not found for task type ${node.data.type}`)
         return false
     }
 
