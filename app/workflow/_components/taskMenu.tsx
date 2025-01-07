@@ -25,6 +25,7 @@ function TaskMenu() {
                     </AccordionTrigger>
                     <AccordionContent className='flex flex-col gap-1'>
                         <TaskMenuButton taskType={TaskType.FILL_INPUT} />
+                        <TaskMenuButton taskType={TaskType.CLICK_ELEMENT} />
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
