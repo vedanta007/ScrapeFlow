@@ -100,5 +100,5 @@ model Credential {
 
   createdAt DateTime  @default(now())
 
-  @@unique([name, userId])
+  @@unique([userId, name])
 }
