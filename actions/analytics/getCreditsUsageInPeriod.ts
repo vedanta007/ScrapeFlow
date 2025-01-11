@@ -3,7 +3,7 @@
 import { PeriodToDateRange } from "@/lib/helper/duration";
 import prisma from "@/lib/prisma";
 import { Period } from "@/types/analytics";
-import { WorkflowExecutionStatus } from "@/types/workflow";
+import { ExecutionPhaseStatus, WorkflowExecutionStatus } from "@/types/workflow";
 import { auth } from "@clerk/nextjs/server";
 import { eachDayOfInterval, format } from "date-fns";
 
@@ -12,16 +12,16 @@ type Stats = Record<string, {
     failed: number,
 }>
 
-const { COMPLETED, FAILED } = WorkflowExecutionStatus
+const { COMPLETED, FAILED } = ExecutionPhaseStatus
 
-export async function GetWorkflowExecutionStats(period: Period) {
+export async function GetCreditsUsageInPeriod(period: Period) {
     const { userId } = await auth()
     if (!userId) {
         throw new Error('Unauthenticated')
     }
 
     const dateRange = PeriodToDateRange(period)
-    const executions = await prisma.workflowExecution.findMany({
+    const executionPhases = await prisma.executionPhase.findMany({
         where: {
             userId,
             startedAt: {
@@ -49,13 +49,13 @@ export async function GetWorkflowExecutionStats(period: Period) {
         return acc
     }, {} as any)
 
-    executions.forEach(execution => {
-        const date = format(execution.startedAt!, dateFormat)
-        if (execution.status === COMPLETED) {
-            stats[date].success++
+    executionPhases.forEach(phase => {
+        const date = format(phase.startedAt!, dateFormat)
+        if (phase.status === COMPLETED) {
+            stats[date].success += phase.creditsCost || 0
         }
-        else if (execution.status === FAILED) {
-            stats[date].failed++
+        else if (phase.status === FAILED) {
+            stats[date].failed += phase.creditsCost || 0
         }
     })
 
