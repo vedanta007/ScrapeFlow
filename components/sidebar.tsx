@@ -11,7 +11,7 @@ import UserAvailableCreditsBadge from './userAvailableCreditsBadge'
 
 const routes = [
     {
-        href: '/',
+        href: '',
         label: 'Home',
         icon: HomeIcon
     },
@@ -45,7 +45,7 @@ function DesktopSidebar() {
             </div>
             <div className="flex flex-col p-2">
                 {routes.map(route => (
-                    <Link key={route.href} href={route.href} className={buttonVariants({
+                    <Link key={route.href} href={`/${route.href}`} className={buttonVariants({
                         variant: activeRoute.href === route.href ? 'sidebarActiveItem' : 'sidebarItem',
                     })}>
                         <route.icon size={20} />
@@ -75,7 +75,7 @@ export function MobileSidebar() {
                         <UserAvailableCreditsBadge />
                         <div className='flex flex-col gap-1 '>
                             {routes.map(route => (
-                                <Link key={route.href} href={route.href} className={buttonVariants({
+                                <Link key={route.href} href={`/${route.href}`} className={buttonVariants({
                                     variant: activeRoute.href === route.href ? 'sidebarActiveItem' : 'sidebarItem',
                                 })} onClick={() => setOpen((prev) => !prev)}>
                                     <route.icon size={20} />
