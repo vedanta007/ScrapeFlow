@@ -5,6 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CoinsIcon } from "lucide-react"
 import { Suspense } from "react"
 import CreditsPurchase from "./_components/creditsPurchase"
+import { Period } from "@/types/analytics"
+import { GetCreditsUsageInPeriod } from "@/actions/analytics/getCreditsUsageInPeriod"
+import CreditsUsageChart from "./_components/creditsUsageChart"
 
 export default function BillingPage() {
     return (
@@ -14,6 +17,9 @@ export default function BillingPage() {
                 <BalanceCard />
             </Suspense>
             <CreditsPurchase />
+            <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+                <CreditUsageCard />
+            </Suspense>
         </div>
     )
 }
@@ -37,5 +43,21 @@ async function BalanceCard() {
                 When your credit balance reaches zero, your workflow will stop running.
             </CardFooter>
         </Card>
+    )
+}
+
+async function CreditUsageCard() {
+    const period: Period = {
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
+    }
+    const data = await GetCreditsUsageInPeriod(period)
+
+    return (
+        <CreditsUsageChart
+            data={data}
+            title='Credits consumed'
+            description='Daily credits consumed in the current month'
+        />
     )
 }
